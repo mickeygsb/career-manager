@@ -276,7 +276,7 @@ export default function CareerHighlightsClient({ userId, initialHighlights }: Pr
                           <span className="text-xs font-medium text-gray-400">#{h.index}</span>
                         )}
                         {h.includes_metrics && (
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-blue-400" title="Includes metrics">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-blue-400" aria-label="Includes metrics">
                             <rect x="1" y="9" width="3" height="6" rx="0.5" />
                             <rect x="6" y="5" width="3" height="10" rx="0.5" />
                             <rect x="11" y="1" width="3" height="14" rx="0.5" />

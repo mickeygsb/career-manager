@@ -42,7 +42,7 @@ export default function NewResumePage() {
         .select('id, position, employers(name, business_unit, industry, industry_segment)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .then(({ data }) => setJobs((data as typeof jobs) ?? []))
+        .then(({ data }) => setJobs((data as unknown as typeof jobs) ?? []))
     })
   }, [])
 

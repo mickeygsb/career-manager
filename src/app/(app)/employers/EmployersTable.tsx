@@ -145,7 +145,7 @@ export default function EmployersTable({ initialEmployers, userId }: { initialEm
     setDialogSaving(false)
   }
 
-  function setDialog(k: keyof Row, v: string | boolean) {
+  function setDialog(k: keyof Row, v: string | boolean | number) {
     setDialogDraft(d => d ? { ...d, [k]: v } : d)
   }
 

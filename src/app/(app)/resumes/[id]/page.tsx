@@ -27,6 +27,7 @@ export default function ResumeDetailPage() {
     industry_segment: '',
     headline: '',
     career_highlights_intro: '',
+    summary: '',
   })
 
   const [allHighlights, setAllHighlights] = useState<CareerHighlight[]>([])
@@ -40,10 +41,7 @@ export default function ResumeDetailPage() {
 
   const selectedJob = jobs.find(j => j.id === form.job_id)
   const jobPart = selectedJob ? (form.type === 'Job' ? jobLabel(selectedJob) : selectedJob.position) : ''
-  const templateParts = [form.role, form.domain, form.industry_segment]
-  const templateBracket = templateParts.some(Boolean)
-    ? `${form.role || ''}_${form.domain || ''}_${form.industry_segment || ''}`
-    : ''
+  const templateBracket = form.industry_segment || ''
   const calculatedTitle = form.type === 'Template'
     ? (templateBracket ? `[${templateBracket}]` : '')
     : [jobPart, form.industry_segment ? `[${form.industry_segment}]` : ''].filter(Boolean).join(' ')
@@ -63,7 +61,7 @@ export default function ResumeDetailPage() {
 
       if (!resume) { router.push('/resumes'); return }
 
-      const jobsList = (jobsData as Job[]) ?? []
+      const jobsList = (jobsData as unknown as Job[]) ?? []
       setJobs(jobsList)
 
       const r = resume as Resume

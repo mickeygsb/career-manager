@@ -24,7 +24,7 @@ export default async function ResumesPage() {
       </div>
       <ResumesClient
         initialResumes={resumes ?? []}
-        initialJobs={(jobs as Parameters<typeof ResumesClient>[0]['initialJobs']) ?? []}
+        initialJobs={(jobs as unknown as Parameters<typeof ResumesClient>[0]['initialJobs']) ?? []}
         userId={user.id}
         initialHighlights={(highlights ?? []) as CareerHighlight[]}
         initialAchievements={(achievements ?? []) as Achievement[]}
