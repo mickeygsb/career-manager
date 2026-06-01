@@ -28,7 +28,7 @@ export default function NewContactPage() {
 
   return (
     <div className="max-w-xl">
-      <h2 className="text-2xl font-bold mb-6">New Contact</h2>
+      <h2 className="text-2xl font-bold text-blue-900 mb-6">New Contact</h2>
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <Field label="Name *" value={form.name} onChange={v => set('name', v)} required />
         <div className="grid grid-cols-2 gap-4">

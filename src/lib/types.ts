@@ -1,24 +1,32 @@
-export type ApplicationStatus = 'wishlist' | 'applied' | 'phone_screen' | 'interview' | 'offer' | 'rejected' | 'withdrawn'
-export type RemoteType = 'remote' | 'hybrid' | 'onsite'
-export type InterviewType = 'phone' | 'technical' | 'behavioral' | 'system_design' | 'onsite' | 'other'
-export type SkillProficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert'
-export type GoalStatus = 'active' | 'completed' | 'paused' | 'abandoned'
+export type EmployerSize = '1-10' | '10-100' | '100-1000' | '1000-10000' | '10000+'
 
-export interface JobApplication {
+export type JobStatus = 'pending_review' | 'active' | 'closed'
+
+export const JOB_STATUS_DETAIL_OPTIONS: Partial<Record<JobStatus, string[]>> = {
+  active: ['Applied', 'Interviewing'],
+  closed: ["Didn't Apply", 'Withdrawn', 'Rejected Without Reply', 'Rejected Without Interview', 'Rejected After Interview', 'Accepted'],
+}
+
+export interface Job {
   id: string
   user_id: string
-  company: string
-  role: string
-  status: ApplicationStatus
-  url?: string
-  salary_min?: number
-  salary_max?: number
-  location?: string
-  remote_type?: RemoteType
+  employer_id?: string
+  position: string
+  date_opened?: string
+  date_applied?: string
+  date_closed?: string
+  status: JobStatus
+  status_detail?: string
+  job_description?: string
+  linkedin_url?: string
+  career_site_url?: string
+  career_site_id?: string
+  next_step?: string
   notes?: string
-  applied_at?: string
+  location?: string
   created_at: string
   updated_at: string
+  employers?: { name: string; business_unit?: string }
 }
 
 export interface Contact {
@@ -33,63 +41,90 @@ export interface Contact {
   created_at: string
 }
 
-export interface Interview {
-  id: string
-  application_id: string
-  type: InterviewType
-  scheduled_at?: string
-  notes?: string
-  outcome?: string
-  created_at: string
-}
-
 export interface Resume {
   id: string
   user_id: string
   title: string
+  type?: 'Template' | 'Job'
+  job_id?: string
+  industry_segment?: string
+  headline?: string
+  role?: string
+  specialty?: string
+  domain?: string
+  effective_date?: string
+  career_highlights_intro?: string
   content: Record<string, unknown>
   is_default: boolean
   created_at: string
   updated_at: string
 }
 
-export interface Skill {
+export interface Employer {
   id: string
   user_id: string
   name: string
-  category?: string
-  proficiency?: SkillProficiency
-  years_experience?: number
-  created_at: string
-}
-
-export interface CareerGoal {
-  id: string
-  user_id: string
-  title: string
-  description?: string
-  target_date?: string
-  status: GoalStatus
+  business_unit?: string
+  aka?: string
+  website?: string
+  industry?: string
+  industry_segment?: string
+  fudge_factor?: number
+  size?: EmployerSize
+  location?: string
+  notes?: string
+  is_target: boolean
   created_at: string
   updated_at: string
 }
 
-export const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  wishlist: 'Wishlist',
-  applied: 'Applied',
-  phone_screen: 'Phone Screen',
-  interview: 'Interview',
-  offer: 'Offer',
-  rejected: 'Rejected',
-  withdrawn: 'Withdrawn',
+export interface Achievement {
+  id: string
+  user_id: string
+  position_id: string
+  index?: number
+  includes_metrics: boolean
+  keywords?: string
+  description: string
+  description_alt1?: string
+  description_alt2?: string
+  created_at: string
+  updated_at: string
 }
 
-export const STATUS_COLORS: Record<ApplicationStatus, string> = {
-  wishlist: 'bg-gray-100 text-gray-700',
-  applied: 'bg-blue-100 text-blue-700',
-  phone_screen: 'bg-yellow-100 text-yellow-700',
-  interview: 'bg-purple-100 text-purple-700',
-  offer: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  withdrawn: 'bg-orange-100 text-orange-700',
+export interface CareerHighlight {
+  id: string
+  user_id: string
+  title: string
+  description: string
+  keywords?: string
+  includes_metrics: boolean
+  index?: number
+  created_at: string
+  updated_at: string
 }
+
+export interface Keyword {
+  id: string
+  user_id: string
+  category: string
+  category_detail?: string
+  index?: number
+  keyword: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Position {
+  id: string
+  user_id: string
+  employer: string
+  title: string
+  start_date: string
+  end_date?: string
+  resume_intro?: string
+  linkedin_summary?: string
+  created_at: string
+  updated_at: string
+}
+

@@ -33,7 +33,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white rounded-2xl border border-gray-200 p-8 w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-1">Career Manager</h1>
+        <h1 className="text-2xl font-bold text-blue-900 mb-1">Career Manager</h1>
         <p className="text-sm text-gray-500 mb-6">
           {mode === 'signin' ? 'Sign in to your account' : 'Create a new account'}
         </p>

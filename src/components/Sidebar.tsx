@@ -4,12 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const nav = [
-  { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/jobs', label: 'Job Applications', icon: '💼' },
+  { href: '/employers', label: 'Employers', icon: '🏢' },
   { href: '/contacts', label: 'Contacts', icon: '👥' },
+  { href: '/jobs', label: 'Jobs', icon: '💼' },
   { href: '/resumes', label: 'Resumes', icon: '📄' },
-  { href: '/skills', label: 'Skills', icon: '⚡' },
-  { href: '/goals', label: 'Career Goals', icon: '🎯' },
+  { href: '/achievements', label: 'Positions', icon: '⭐' },
+  { href: '/career-highlights', label: 'Career Highlights', icon: '🌟' },
+  { href: '/keywords', label: 'Keywords', icon: '🏷️' },
 ]
 
 export default function Sidebar() {
