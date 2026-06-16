@@ -274,7 +274,7 @@ export default function KeywordsClient({ userId, initialKeywords }: Props) {
                 onDragLeave={() => setDragOverId(null)}
                 onDrop={e => { e.preventDefault(); handleDrop(k.id) }}
                 onDragEnd={() => { setDragSrcId(null); setDragOverId(null) }}
-                className={`px-5 py-3 transition-colors ${dragOverId === k.id ? 'bg-blue-50 border-l-2 border-blue-400' : ''} ${dragSrcId === k.id ? 'opacity-40' : ''}`}
+                className={`px-5 py-2 transition-colors ${dragOverId === k.id ? 'bg-blue-50 border-l-2 border-blue-400' : ''} ${dragSrcId === k.id ? 'opacity-40' : ''}`}
               >
                 {editingId === k.id ? (
                   <KeywordForm

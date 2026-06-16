@@ -520,7 +520,7 @@ export default function ResumesClient({
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowHighlightsDialog(false)} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-800">Career Highlights</h2>
+              <h2 className="text-base font-semibold text-black">Career Highlights</h2>
               <button
                 type="button"
                 onClick={() => setShowHighlightsDialog(false)}
@@ -652,7 +652,7 @@ export default function ResumesClient({
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowAchievementsDialog(false)} />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-800">Position Achievements</h2>
+              <h2 className="text-base font-semibold text-black">Position Achievements</h2>
               <button
                 type="button"
                 onClick={() => setShowAchievementsDialog(false)}

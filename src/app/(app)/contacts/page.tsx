@@ -33,7 +33,7 @@ export default async function ContactsPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
           {contacts.map(c => (
-            <div key={c.id} className="flex items-center gap-4 px-5 py-4">
+            <div key={c.id} className="flex items-center gap-4 px-5 py-3">
               <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold shrink-0">
                 {c.name[0]?.toUpperCase()}
               </div>

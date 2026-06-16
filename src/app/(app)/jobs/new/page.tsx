@@ -7,8 +7,8 @@ import type { JobStatus } from '@/lib/types'
 import { JOB_STATUS_DETAIL_OPTIONS } from '@/lib/types'
 
 const STATUS_OPTIONS: { value: JobStatus; label: string }[] = [
-  { value: 'pending_review', label: 'Pending Review' },
-  { value: 'active', label: 'Active' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'open', label: 'Open' },
   { value: 'closed', label: 'Closed' },
 ]
 
@@ -19,7 +19,7 @@ export default function NewJobPage() {
   const [form, setForm] = useState({
     employer_id: '',
     position: '',
-    status: 'pending_review' as JobStatus,
+    status: 'draft' as JobStatus,
     status_detail: '',
     location: 'Austin, TX',
     date_opened: new Date().toISOString().slice(0, 10),
@@ -66,6 +66,7 @@ export default function NewJobPage() {
       next_step: form.next_step || null,
       job_description: form.job_description || null,
       notes: form.notes || null,
+      active: true,
     })
     if (!error) router.push('/jobs')
     else { alert(error.message); setSaving(false) }

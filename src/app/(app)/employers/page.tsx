@@ -15,6 +15,11 @@ export default async function EmployersPage() {
     .order('is_target', { ascending: false })
     .order('name', { ascending: true })
 
+  const { data: jobs } = await supabase
+    .from('jobs')
+    .select('employer_id, status, status_detail')
+    .eq('user_id', user.id)
+
   return (
     <div className="max-w-6xl">
       <div className="flex items-center justify-between mb-6">
@@ -23,7 +28,7 @@ export default async function EmployersPage() {
           + Add Employer
         </Link>
       </div>
-      <EmployersTable initialEmployers={employers ?? []} userId={user.id} />
+      <EmployersTable initialEmployers={employers ?? []} initialJobs={jobs ?? []} userId={user.id} />
     </div>
   )
 }

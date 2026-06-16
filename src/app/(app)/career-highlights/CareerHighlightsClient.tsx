@@ -11,6 +11,84 @@ interface Props {
 
 const EMPTY_FORM = { title: '', description: '', keywords: '', includes_metrics: false }
 
+const inputCls = 'px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full bg-white'
+const textareaCls = 'px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full resize-y min-h-[80px]'
+
+function HighlightForm({
+  values,
+  onChange,
+  onSubmit,
+  onCancel,
+  onDelete,
+  submitLabel,
+  saving,
+}: {
+  values: typeof EMPTY_FORM
+  onChange: (k: keyof typeof EMPTY_FORM, v: string | boolean) => void
+  onSubmit: (e: React.FormEvent) => void
+  onCancel: () => void
+  onDelete?: () => void
+  submitLabel: string
+  saving: boolean
+}) {
+  return (
+    <form onSubmit={onSubmit} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="includes_metrics" checked={values.includes_metrics as boolean} onChange={e => onChange('includes_metrics', e.target.checked)}
+          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+        <label htmlFor="includes_metrics" className="text-sm font-medium text-gray-700">Includes Metrics</label>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Keywords</label>
+        <input
+          value={values.keywords as string}
+          onChange={e => onChange('keywords', e.target.value)}
+          placeholder="e.g. leadership, revenue growth, cross-functional"
+          className={inputCls}
+        />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Highlight Title *</label>
+        <input
+          value={values.title}
+          onChange={e => onChange('title', e.target.value)}
+          placeholder="e.g. Grew ARR from $2M to $10M in 18 months"
+          required
+          className={inputCls}
+        />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Highlight Description *</label>
+        <textarea
+          value={values.description}
+          onChange={e => onChange('description', e.target.value)}
+          placeholder="Describe the context, actions taken, and impact…"
+          required
+          className={textareaCls}
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        {onDelete ? (
+          <button type="button" onClick={onDelete}
+            className="px-4 py-2 text-sm font-medium text-red-500 hover:text-red-700 border border-red-100 rounded-lg hover:bg-red-50">
+            Delete
+          </button>
+        ) : <span />}
+        <div className="flex gap-2">
+          <button type="button" onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50">
+            Cancel
+          </button>
+          <button type="submit" disabled={saving}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            {saving ? 'Saving…' : submitLabel}
+          </button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
 export default function CareerHighlightsClient({ userId, initialHighlights }: Props) {
   const [highlights, setHighlights] = useState<CareerHighlight[]>(initialHighlights)
   const [showAdd, setShowAdd] = useState(false)
@@ -23,9 +101,6 @@ export default function CareerHighlightsClient({ userId, initialHighlights }: Pr
   const [generatingKeywords, setGeneratingKeywords] = useState(false)
 
   const supabase = createClient()
-
-  const inputCls = 'px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full bg-white'
-  const textareaCls = 'px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full resize-y min-h-[80px]'
 
   const sorted = [...highlights].sort((a, b) => (a.index ?? Infinity) - (b.index ?? Infinity))
 
@@ -136,79 +211,6 @@ export default function CareerHighlightsClient({ userId, initialHighlights }: Pr
     setGeneratingKeywords(false)
   }
 
-  function HighlightForm({
-    values,
-    onChange,
-    onSubmit,
-    onCancel,
-    onDelete,
-    submitLabel,
-  }: {
-    values: typeof EMPTY_FORM
-    onChange: (k: keyof typeof EMPTY_FORM, v: string | boolean) => void
-    onSubmit: (e: React.FormEvent) => void
-    onCancel: () => void
-    onDelete?: () => void
-    submitLabel: string
-  }) {
-    return (
-      <form onSubmit={onSubmit} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <input type="checkbox" id="includes_metrics" checked={values.includes_metrics as boolean} onChange={e => onChange('includes_metrics', e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-          <label htmlFor="includes_metrics" className="text-sm font-medium text-gray-700">Includes Metrics</label>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Keywords</label>
-          <input
-            value={values.keywords as string}
-            onChange={e => onChange('keywords', e.target.value)}
-            placeholder="e.g. leadership, revenue growth, cross-functional"
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Highlight Title *</label>
-          <input
-            value={values.title}
-            onChange={e => onChange('title', e.target.value)}
-            placeholder="e.g. Grew ARR from $2M to $10M in 18 months"
-            required
-            className={inputCls}
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Highlight Description *</label>
-          <textarea
-            value={values.description}
-            onChange={e => onChange('description', e.target.value)}
-            placeholder="Describe the context, actions taken, and impact…"
-            required
-            className={textareaCls}
-          />
-        </div>
-        <div className="flex items-center justify-between">
-          {onDelete ? (
-            <button type="button" onClick={onDelete}
-              className="px-4 py-2 text-sm font-medium text-red-500 hover:text-red-700 border border-red-100 rounded-lg hover:bg-red-50">
-              Delete
-            </button>
-          ) : <span />}
-          <div className="flex gap-2">
-            <button type="button" onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50">
-              Cancel
-            </button>
-            <button type="submit" disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Saving…' : submitLabel}
-            </button>
-          </div>
-        </div>
-      </form>
-    )
-  }
-
   return (
     <div className="space-y-4">
       {!showAdd && (
@@ -234,6 +236,7 @@ export default function CareerHighlightsClient({ userId, initialHighlights }: Pr
           onSubmit={handleAdd}
           onCancel={() => { setShowAdd(false); setForm(EMPTY_FORM) }}
           submitLabel="Add Career Highlight"
+          saving={saving}
         />
       )}
 
@@ -266,6 +269,7 @@ export default function CareerHighlightsClient({ userId, initialHighlights }: Pr
                     onCancel={() => setEditingId(null)}
                     onDelete={() => handleDelete(h.id)}
                     submitLabel="Save"
+                    saving={saving}
                   />
                 ) : (
                   <div className="flex items-start justify-between gap-4">

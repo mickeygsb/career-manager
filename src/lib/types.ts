@@ -1,9 +1,10 @@
 export type EmployerSize = '1-10' | '10-100' | '100-1000' | '1000-10000' | '10000+'
 
-export type JobStatus = 'pending_review' | 'active' | 'closed'
+export type JobStatus = 'draft' | 'open' | 'closed'
 
 export const JOB_STATUS_DETAIL_OPTIONS: Partial<Record<JobStatus, string[]>> = {
-  active: ['Applied', 'Interviewing'],
+  draft: ['Assess', 'Apply'],
+  open: ['Applied', 'Interviewing'],
   closed: ["Didn't Apply", 'Withdrawn', 'Rejected Without Reply', 'Rejected Without Interview', 'Rejected After Interview', 'Accepted'],
 }
 
@@ -24,9 +25,11 @@ export interface Job {
   next_step?: string
   notes?: string
   location?: string
+  active: boolean
+  favorite: boolean
   created_at: string
   updated_at: string
-  employers?: { name: string; business_unit?: string }
+  employers?: { name: string; business_unit?: string; industry?: string; industry_segment?: string }
 }
 
 export interface Contact {
@@ -72,8 +75,14 @@ export interface Employer {
   fudge_factor?: number
   size?: EmployerSize
   location?: string
+  address?: string
+  linkedin_company_codes?: string
+  career_site_url?: string
+  status?: string
   notes?: string
   is_target: boolean
+  growing_company: boolean
+  active: boolean
   created_at: string
   updated_at: string
 }
