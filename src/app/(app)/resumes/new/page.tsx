@@ -7,12 +7,12 @@ import { createClient } from '@/lib/supabase/client'
 export default function NewResumePage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
-  const [jobs, setJobs] = useState<{ id: string; position: string; employers?: { name: string; business_unit?: string; industry?: string; industry_segment?: string } }[]>([])
+  const [jobs, setJobs] = useState<{ id: string; position: string; employers?: { name: string; subsidiary?: string; industry?: string; industry_segment?: string } }[]>([])
   const [form, setForm] = useState({
     title: '',
     type: 'Template' as 'Template' | 'Job',
     job_id: '',
-    industry_segment: '',
+    industry: '',
     headline: '',
     role: '',
     specialty: '',
@@ -25,13 +25,13 @@ export default function NewResumePage() {
 
   const selectedJob = jobs.find(j => j.id === form.job_id)
   const jobPart = selectedJob ? (form.type === 'Job' ? jobLabel(selectedJob) : selectedJob.position) : ''
-  const templateParts = [form.role, form.domain, form.industry_segment]
+  const templateParts = [form.role, form.domain, form.industry]
   const templateBracket = templateParts.some(Boolean)
-    ? `${form.role || ''}_${form.domain || ''}_${form.industry_segment || ''}`
+    ? `${form.role || ''}_${form.domain || ''}_${form.industry || ''}`
     : ''
   const calculatedName = form.type === 'Template'
     ? (templateBracket ? `[${templateBracket}]` : '')
-    : [jobPart, form.industry_segment ? `[${form.industry_segment}]` : ''].filter(Boolean).join(' ')
+    : [jobPart, form.industry ? `[${form.industry}]` : ''].filter(Boolean).join(' ')
 
   useEffect(() => {
     const supabase = createClient()
@@ -39,7 +39,7 @@ export default function NewResumePage() {
       if (!user) return
       supabase
         .from('jobs')
-        .select('id, position, employers(name, business_unit, industry, industry_segment)')
+        .select('id, position, employers(name, subsidiary, industry, industry_segment)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .then(({ data }) => setJobs((data as unknown as typeof jobs) ?? []))
@@ -57,7 +57,7 @@ export default function NewResumePage() {
       title: calculatedName || '(untitled)',
       type: form.type,
       job_id: form.job_id || null,
-      industry_segment: form.industry_segment || null,
+      industry: form.industry || null,
       headline: form.headline || null,
       role: form.role || null,
       specialty: form.specialty || null,
@@ -73,7 +73,7 @@ export default function NewResumePage() {
   function jobLabel(job: typeof jobs[number]) {
     const emp = job.employers
     if (!emp) return job.position
-    const empName = emp.business_unit ? `${emp.name} > ${emp.business_unit}` : emp.name
+    const empName = emp.subsidiary ? `${emp.name} > ${emp.subsidiary}` : emp.name
     return `${empName} — ${job.position}`
   }
 
@@ -85,7 +85,7 @@ export default function NewResumePage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <select value={form.type} onChange={e => { set('type', e.target.value); if (e.target.value === 'Template') { set('job_id', ''); set('industry_segment', '') } }}
+            <select value={form.type} onChange={e => { set('type', e.target.value); if (e.target.value === 'Template') { set('job_id', ''); set('industry', '') } }}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
               <option value="Template">Template</option>
               <option value="Job">Job</option>
@@ -96,7 +96,7 @@ export default function NewResumePage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Job</label>
               <select value={form.job_id} onChange={e => {
                 const job = jobs.find(j => j.id === e.target.value)
-                setForm(f => ({ ...f, job_id: e.target.value, industry_segment: job?.employers?.industry_segment || job?.employers?.industry || '' }))
+                setForm(f => ({ ...f, job_id: e.target.value, industry: job?.employers?.industry_segment || '' }))
               }}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                 <option value="">— Not linked —</option>
@@ -106,16 +106,7 @@ export default function NewResumePage() {
           )}
         </div>
 
-        {form.type === 'Job' ? (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Industry Segment</label>
-            <div className="w-full px-3 py-2 border border-gray-100 rounded-lg text-sm text-gray-700 bg-gray-50 min-h-[38px]">
-              {form.industry_segment || <span className="text-gray-300">—</span>}
-            </div>
-          </div>
-        ) : (
-          <Field label="Industry Segment" value={form.industry_segment} onChange={v => set('industry_segment', v)} />
-        )}
+        <Field label="Industry" value={form.industry} onChange={v => set('industry', v)} />
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Resume Title</label>

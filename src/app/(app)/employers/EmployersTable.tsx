@@ -15,16 +15,16 @@ const SIZE_OPTIONS: { value: EmployerSize | ''; label: string }[] = [
 ]
 
 type Row = Omit<Employer, 'user_id' | 'created_at' | 'updated_at'> & { open_jobs: number; applied_jobs: number }
-type TextField = 'name' | 'business_unit' | 'industry' | 'industry_segment' | 'location' | 'website' | 'linkedin_company_codes' | 'career_site_url'
+type TextField = 'name' | 'subsidiary' | 'industry' | 'industry_segment' | 'location' | 'website' | 'linkedin_company_codes' | 'career_site_url'
 
 function toRow(e: Employer, open_jobs = 0, applied_jobs = 0): Row {
   return {
     id: e.id,
-    name: [e.name, e.business_unit].filter(Boolean).join(' > '),
-    business_unit: e.business_unit ?? '',
+    name: [e.name, e.subsidiary].filter(Boolean).join(' > '),
+    subsidiary: e.subsidiary ?? '',
     aka: e.aka ?? '',
-    industry: [e.industry, e.industry_segment].filter(Boolean).join(' > '),
-    industry_segment: e.industry_segment ?? '',
+    industry: e.industry_segment ?? '',
+    industry_segment: e.industry ?? '',
     fudge_factor: e.fudge_factor,
     size: e.size,
     location: e.location ?? '',
@@ -33,6 +33,7 @@ function toRow(e: Employer, open_jobs = 0, applied_jobs = 0): Row {
     career_site_url: e.career_site_url ?? '',
     status: e.status ?? '',
     website: e.website ?? '',
+    employer_intro: e.employer_intro ?? '',
     notes: e.notes ?? '',
     is_target: e.is_target ?? false,
     growing_company: e.growing_company ?? false,
@@ -46,12 +47,6 @@ function parseEmployer(name: string) {
   const idx = name.indexOf(' > ')
   if (idx === -1) return { company: name, subsidiary: '' }
   return { company: name.slice(0, idx), subsidiary: name.slice(idx + 3) }
-}
-
-function parseIndustry(industrySegment: string) {
-  const idx = industrySegment.indexOf(' > ')
-  if (idx === -1) return { industry: industrySegment, segment: '' }
-  return { industry: industrySegment.slice(0, idx), segment: industrySegment.slice(idx + 3) }
 }
 
 type JobStub = { employer_id: string | null; status: string; status_detail: string | null }
@@ -74,16 +69,20 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
   const [filterTarget, setFilterTarget] = useState(false)
   const [filterGrowing, setFilterGrowing] = useState(false)
   const [filterActive, setFilterActive] = useState(false)
+  const [filterApplied, setFilterApplied] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
   const [filterFudge, setFilterFudge] = useState<number | null>(null)
   const [sortOrder, setSortOrder] = useState<{ key: keyof Row; dir: 'asc' | 'desc' }[]>([])
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [groupOrder, setGroupOrder] = useState<string[]>([])
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     try {
       setFilter(localStorage.getItem('employerFilter') ?? '')
       setFilterTarget(localStorage.getItem('employerFilterTarget') === 'true')
       setFilterGrowing(localStorage.getItem('employerFilterGrowing') === 'true')
+      setFilterActive(localStorage.getItem('employerFilterActive') === 'true')
       const fv = localStorage.getItem('employerFilterFudge')
       setFilterFudge(fv === null || fv === '' ? null : parseInt(fv))
       const stored = localStorage.getItem('employerSortOrder')
@@ -99,6 +98,7 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
       const go = localStorage.getItem('employerGroupOrder')
       if (go) setGroupOrder(JSON.parse(go))
     } catch {}
+    setHydrated(true)
   }, [])
   const [dragSrcGroup, setDragSrcGroup] = useState<string | null>(null)
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
@@ -158,16 +158,15 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
     setRows(rs => rs.map(r => r.id === rowId ? { ...r, name: trimmed } : r))
     const { company, subsidiary } = parseEmployer(trimmed)
     const supabase = createClient()
-    await supabase.from('employers').update({ name: company, business_unit: subsidiary || null }).eq('id', rowId).eq('user_id', userId)
+    await supabase.from('employers').update({ name: company, subsidiary: subsidiary || null }).eq('id', rowId).eq('user_id', userId)
   }
 
   async function commitIndustrySegment(rowId: string, value: string) {
     setActiveCell(null)
     const trimmed = value.trim()
     setRows(rs => rs.map(r => r.id === rowId ? { ...r, industry: trimmed } : r))
-    const { industry, segment } = parseIndustry(trimmed)
     const supabase = createClient()
-    await supabase.from('employers').update({ industry: industry || null, industry_segment: segment || null }).eq('id', rowId).eq('user_id', userId)
+    await supabase.from('employers').update({ industry_segment: trimmed || null }).eq('id', rowId).eq('user_id', userId)
   }
 
   async function commitTarget(rowId: string, checked: boolean) {
@@ -217,13 +216,12 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
     setDialogSaving(true)
     const supabase = createClient()
     const { company, subsidiary } = parseEmployer(dialogDraft.name)
-    const { industry, segment } = parseIndustry(dialogDraft.industry ?? '')
     const { error } = await supabase.from('employers').update({
       name: company,
-      business_unit: subsidiary || null,
+      subsidiary: subsidiary || null,
       aka: dialogDraft.aka || null,
-      industry: industry || null,
-      industry_segment: segment || null,
+      industry: dialogDraft.industry_segment || null,
+      industry_segment: dialogDraft.industry || null,
       fudge_factor: dialogDraft.fudge_factor ?? null,
       size: dialogDraft.size || null,
       location: dialogDraft.location || null,
@@ -232,6 +230,7 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
       career_site_url: dialogDraft.career_site_url || null,
       status: dialogDraft.status || null,
       website: dialogDraft.website || null,
+      employer_intro: dialogDraft.employer_intro || null,
       notes: dialogDraft.notes || null,
       is_target: dialogDraft.is_target,
       growing_company: dialogDraft.growing_company,
@@ -260,26 +259,29 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
 
   // ── render ────────────────────────────────────────────────────────────────
 
-  useEffect(() => { localStorage.setItem('employerFilter', filter) }, [filter])
-  useEffect(() => { localStorage.setItem('employerFilterTarget', String(filterTarget)) }, [filterTarget])
-  useEffect(() => { localStorage.setItem('employerFilterGrowing', String(filterGrowing)) }, [filterGrowing])
+  useEffect(() => { if (hydrated) localStorage.setItem('employerFilter', filter) }, [filter, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('employerFilterTarget', String(filterTarget)) }, [filterTarget, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('employerFilterGrowing', String(filterGrowing)) }, [filterGrowing, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('employerFilterActive', String(filterActive)) }, [filterActive, hydrated])
   useEffect(() => {
+    if (!hydrated) return
     if (filterFudge !== null) localStorage.setItem('employerFilterFudge', String(filterFudge))
     else localStorage.removeItem('employerFilterFudge')
-  }, [filterFudge])
+  }, [filterFudge, hydrated])
 
   useEffect(() => {
-    if (groupOrder.length) localStorage.setItem('employerGroupOrder', JSON.stringify(groupOrder))
-  }, [groupOrder])
+    if (hydrated && groupOrder.length) localStorage.setItem('employerGroupOrder', JSON.stringify(groupOrder))
+  }, [groupOrder, hydrated])
 
   useEffect(() => {
-    localStorage.setItem('employerCollapsedGroups', JSON.stringify([...collapsedGroups]))
-  }, [collapsedGroups])
+    if (hydrated) localStorage.setItem('employerCollapsedGroups', JSON.stringify([...collapsedGroups]))
+  }, [collapsedGroups, hydrated])
 
   useEffect(() => {
+    if (!hydrated) return
     if (sortOrder.length) localStorage.setItem('employerSortOrder', JSON.stringify(sortOrder))
     else localStorage.removeItem('employerSortOrder')
-  }, [sortOrder])
+  }, [sortOrder, hydrated])
 
   function handleGroupDrop(targetLabel: string) {
     if (!dragSrcGroup || dragSrcGroup === targetLabel) return
@@ -342,6 +344,8 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
     if (filterTarget && !r.is_target) return false
     if (filterGrowing && !r.growing_company) return false
     if (filterActive && !r.active) return false
+    if (filterApplied && r.applied_jobs <= 0) return false
+    if (filterOpen && r.open_jobs <= 0) return false
     if (filterFudge !== null && (r.fudge_factor == null || r.fudge_factor < filterFudge)) return false
     return true
   })
@@ -410,24 +414,6 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
           placeholder="Filter by name, industry, or location…"
           className="w-full sm:w-80 px-3 py-2 border border-gray-200 rounded-lg text-sm text-black placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <button
-          onClick={() => setFilterActive(v => !v)}
-          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${filterActive ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-        >
-          Active
-        </button>
-        <button
-          onClick={() => setFilterTarget(v => !v)}
-          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${filterTarget ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-        >
-          Target
-        </button>
-        <button
-          onClick={() => setFilterGrowing(v => !v)}
-          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${filterGrowing ? 'bg-green-100 border-green-300 text-green-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-        >
-          Growing
-        </button>
         <select
           value={filterFudge ?? ''}
           onChange={e => setFilterFudge(e.target.value === '' ? null : parseInt(e.target.value))}
@@ -438,9 +424,42 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
             <option key={n} value={n}>Fudge ≥ {n}</option>
           ))}
         </select>
-        {(filter || filterTarget || filterGrowing || filterActive || filterFudge !== null) && (
+        <button
+          onClick={() => setFilterOpen(v => !v)}
+          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${filterOpen ? 'bg-emerald-100 border-emerald-300 text-emerald-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        >
+          Open
+        </button>
+        <button
+          onClick={() => setFilterApplied(v => !v)}
+          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${filterApplied ? 'bg-indigo-100 border-indigo-300 text-indigo-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        >
+          Applied
+        </button>
+        <button
+          onClick={() => setFilterGrowing(v => !v)}
+          title="Growing"
+          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors inline-flex items-center ${filterGrowing ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </button>
+        <button
+          onClick={() => setFilterTarget(v => !v)}
+          title="Target"
+          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors inline-flex items-center ${filterTarget ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        </button>
+        <button
+          onClick={() => setFilterActive(v => !v)}
+          title="Active"
+          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors inline-flex items-center ${filterActive ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+        </button>
+        {(filter || filterTarget || filterGrowing || filterActive || filterFudge !== null || filterApplied || filterOpen) && (
           <button
-            onClick={() => { setFilter(''); setFilterTarget(false); setFilterGrowing(false); setFilterActive(false); setFilterFudge(null) }}
+            onClick={() => { setFilter(''); setFilterTarget(false); setFilterGrowing(false); setFilterActive(false); setFilterFudge(null); setFilterApplied(false); setFilterOpen(false) }}
             className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
           >
             Clear filters
@@ -454,11 +473,11 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
               <th className="text-left px-4 py-2 font-medium text-gray-500 w-[26%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('name', e.ctrlKey)}>Employer{sortIndicator('name')}</th>
               <th className="text-center px-4 py-2 font-medium text-gray-500 w-[6%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('open_jobs', e.ctrlKey)}>Open{sortIndicator('open_jobs')}</th>
               <th className="text-center px-4 py-2 font-medium text-gray-500 w-[6%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('applied_jobs', e.ctrlKey)}>Applied{sortIndicator('applied_jobs')}</th>
-              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('growing_company', e.ctrlKey)}>Growing{sortIndicator('growing_company')}</th>
-              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('is_target', e.ctrlKey)}>Target{sortIndicator('is_target')}</th>
-              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('active', e.ctrlKey)}>Active{sortIndicator('active')}</th>
+              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('career_site_url', e.ctrlKey)}>Link{sortIndicator('career_site_url')}</th>
               <th className="text-center px-4 py-2 font-medium text-gray-500 w-[8%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('fudge_factor', e.ctrlKey)}>Fudge{sortIndicator('fudge_factor')}</th>
-              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('career_site_url', e.ctrlKey)}>Career Site{sortIndicator('career_site_url')}</th>
+              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('growing_company', e.ctrlKey)} title="Growing"><span className="inline-flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>{sortIndicator('growing_company')}</span></th>
+              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('is_target', e.ctrlKey)} title="Target"><span className="inline-flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>{sortIndicator('is_target')}</span></th>
+              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('active', e.ctrlKey)} title="Active"><span className="inline-flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>{sortIndicator('active')}</span></th>
               <th className="px-4 py-2 w-[8%]" />
             </tr>
           </thead>
@@ -505,36 +524,22 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
                 <td className="px-4 py-1.5 text-center text-sm text-black">{row.open_jobs || <span className="text-gray-300">0</span>}</td>
                 <td className="px-4 py-1.5 text-center text-sm text-black">{row.applied_jobs || <span className="text-gray-300">0</span>}</td>
 
-                {/* Growing — immediate toggle */}
+                {/* Career Site URL */}
                 <td className="px-4 py-1 text-center">
-                  <input
-                    type="checkbox"
-                    checked={row.growing_company ?? false}
-                    onChange={e => commitGrowing(row.id, e.target.checked)}
-                    className="rounded"
-                  />
+                  {row.career_site_url ? (
+                    <a
+                      href={row.career_site_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={row.career_site_url}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded text-xs font-medium text-black hover:bg-gray-100"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+                  ) : (
+                    <span className="text-gray-300 text-xs">—</span>
+                  )}
                 </td>
-
-                {/* Target — immediate toggle */}
-                <td className="px-4 py-1 text-center">
-                  <input
-                    type="checkbox"
-                    checked={row.is_target ?? false}
-                    onChange={e => commitTarget(row.id, e.target.checked)}
-                    className="rounded"
-                  />
-                </td>
-
-                {/* Active — immediate toggle */}
-                <td className="px-4 py-1 text-center">
-                  <input
-                    type="checkbox"
-                    checked={row.active ?? false}
-                    onChange={e => commitActive(row.id, e.target.checked)}
-                    className="rounded"
-                  />
-                </td>
-
 
                 {/* Fudge Factor — spinner 0–9, saves on change */}
                 <td className="px-2 py-1 text-center">
@@ -553,21 +558,25 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
                   />
                 </td>
 
-                {/* Career Site URL */}
+                {/* Growing — immediate toggle */}
                 <td className="px-4 py-1 text-center">
-                  {row.career_site_url ? (
-                    <a
-                      href={row.career_site_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={row.career_site_url}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded text-xs font-medium text-black hover:bg-gray-100"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                    </a>
-                  ) : (
-                    <span className="text-gray-300 text-xs">—</span>
-                  )}
+                  <button onClick={() => commitGrowing(row.id, !row.growing_company)} title={row.growing_company ? 'Growing' : 'Not growing'}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${row.growing_company ? 'text-blue-500' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                  </button>
+                </td>
+
+                {/* Target — immediate toggle */}
+                <td className="px-4 py-1 text-center">
+                  <button onClick={() => commitTarget(row.id, !row.is_target)} title={row.is_target ? 'Target' : 'Not a target'}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${row.is_target ? 'text-amber-500' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                  </button>
+                </td>
+
+                {/* Active — immediate toggle */}
+                <td className="px-4 py-1 text-center">
+                  <button onClick={() => commitActive(row.id, !row.active)} title={row.active ? 'Active' : 'Inactive'}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${row.active ? 'text-green-500' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+                  </button>
                 </td>
 
                 {/* Actions */}
@@ -593,8 +602,9 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
       {dialogDraft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={closeDialog} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 space-y-3 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-black sticky top-0 bg-white pb-1">Edit Employer</h3>
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+            <h3 className="text-lg font-semibold text-black px-6 pt-6 pb-2 shrink-0">Edit Employer</h3>
+            <div className="px-6 pb-4 space-y-3 overflow-y-auto flex-1">
 
             {/* Employer name / AKA */}
             <div className="grid grid-cols-2 gap-4">
@@ -606,12 +616,6 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
                   placeholder="e.g. Acme Corp > Widget Division"
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {(parseEmployer(dialogDraft.name).company || parseEmployer(dialogDraft.name).subsidiary) && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    {parseEmployer(dialogDraft.name).company}
-                    {parseEmployer(dialogDraft.name).subsidiary && <> › <em>{parseEmployer(dialogDraft.name).subsidiary}</em></>}
-                  </p>
-                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">AKA</label>
@@ -624,8 +628,16 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
               </div>
             </div>
 
-            {/* Industry Segment / Location */}
+            {/* Industry / Industry Segment */}
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Industry</label>
+                <input
+                  value={dialogDraft.industry_segment ?? ''}
+                  onChange={e => setDialog('industry_segment', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Industry Segment</label>
                 <input
@@ -634,37 +646,36 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
                   placeholder="e.g. Technology > SaaS"
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {(parseIndustry(dialogDraft.industry ?? '').industry || parseIndustry(dialogDraft.industry ?? '').segment) && (
-                  <p className="mt-1 text-xs text-gray-400">
-                    {parseIndustry(dialogDraft.industry ?? '').industry}
-                    {parseIndustry(dialogDraft.industry ?? '').segment && <> › <em>{parseIndustry(dialogDraft.industry ?? '').segment}</em></>}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
-                <input
-                  value={dialogDraft.location ?? ''}
-                  onChange={e => setDialog('location', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
               </div>
             </div>
 
+            {/* Location */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
+              <input
+                value={dialogDraft.location ?? ''}
+                onChange={e => setDialog('location', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
             {/* Flags */}
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={dialogDraft.is_target ?? false} onChange={e => setDialog('is_target', e.target.checked)} className="rounded" />
-                <span className="text-sm text-black">Evergreen Target</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={dialogDraft.growing_company ?? false} onChange={e => setDialog('growing_company', e.target.checked)} className="rounded" />
-                <span className="text-sm text-black">Growing company</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={dialogDraft.active ?? false} onChange={e => setDialog('active', e.target.checked)} className="rounded" />
-                <span className="text-sm text-black">Active</span>
-              </label>
+            <div className="flex gap-5">
+              <button type="button" onClick={() => setDialog('is_target', !dialogDraft.is_target)}
+                className="flex items-center gap-1.5 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${dialogDraft.is_target ? 'text-amber-500' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                <span className={dialogDraft.is_target ? 'text-black' : 'text-gray-400'}>Evergreen Target</span>
+              </button>
+              <button type="button" onClick={() => setDialog('growing_company', !dialogDraft.growing_company)}
+                className="flex items-center gap-1.5 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${dialogDraft.growing_company ? 'text-blue-500' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                <span className={dialogDraft.growing_company ? 'text-black' : 'text-gray-400'}>Growing Company</span>
+              </button>
+              <button type="button" onClick={() => setDialog('active', !dialogDraft.active)}
+                className="flex items-center gap-1.5 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${dialogDraft.active ? 'text-green-500' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+                <span className={dialogDraft.active ? 'text-black' : 'text-gray-400'}>Active</span>
+              </button>
             </div>
 
             {/* Size / Fudge / Open Jobs / Closed Jobs */}
@@ -745,6 +756,17 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
               </div>
             </div>
 
+            {/* Employer Intro */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Employer Intro</label>
+              <textarea
+                value={dialogDraft.employer_intro ?? ''}
+                onChange={e => setDialog('employer_intro', e.target.value)}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+            </div>
+
             {/* Notes */}
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
@@ -756,7 +778,8 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
               />
             </div>
 
-            <div className="flex items-center justify-between pt-2 sticky bottom-0 bg-white">
+            </div>
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 shrink-0">
               <button
                 onClick={() => { closeDialog(); deleteRow(dialogDraft.id) }}
                 disabled={dialogSaving}

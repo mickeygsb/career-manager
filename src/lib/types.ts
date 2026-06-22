@@ -25,11 +25,15 @@ export interface Job {
   next_step?: string
   notes?: string
   location?: string
+  industry?: string
+  role?: string
+  domain?: string
+  specialty?: string
   active: boolean
   favorite: boolean
   created_at: string
   updated_at: string
-  employers?: { name: string; business_unit?: string; industry?: string; industry_segment?: string }
+  employers?: { name: string; subsidiary?: string; industry?: string; industry_segment?: string }
 }
 
 export interface Contact {
@@ -50,7 +54,7 @@ export interface Resume {
   title: string
   type?: 'Template' | 'Job'
   job_id?: string
-  industry_segment?: string
+  industry?: string
   headline?: string
   role?: string
   specialty?: string
@@ -67,7 +71,7 @@ export interface Employer {
   id: string
   user_id: string
   name: string
-  business_unit?: string
+  subsidiary?: string
   aka?: string
   website?: string
   industry?: string
@@ -80,6 +84,7 @@ export interface Employer {
   career_site_url?: string
   status?: string
   notes?: string
+  employer_intro?: string
   is_target: boolean
   growing_company: boolean
   active: boolean
@@ -111,6 +116,22 @@ export interface CareerHighlight {
   index?: number
   created_at: string
   updated_at: string
+}
+
+export interface CareerHighlightKeyword {
+  id: string
+  career_highlight_id: string
+  keyword_id: string
+  user_id: string
+  created_at: string
+}
+
+export interface AchievementKeyword {
+  id: string
+  position_achievement_id: string
+  keyword_id: string
+  user_id: string
+  created_at: string
 }
 
 export interface Keyword {

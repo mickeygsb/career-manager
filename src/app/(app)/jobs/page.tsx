@@ -11,19 +11,19 @@ export default async function JobsPage() {
   const [{ data: jobs }, { data: employers }] = await Promise.all([
     supabase
       .from('jobs')
-      .select('*, employers(name, business_unit, industry, industry_segment)')
+      .select('*, employers(name, subsidiary, industry, industry_segment)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
     supabase
       .from('employers')
-      .select('id, name, business_unit, location')
+      .select('id, name, subsidiary, location, industry, industry_segment')
       .eq('user_id', user.id)
       .eq('active', true)
       .order('name', { ascending: true }),
   ])
 
   return (
-    <div className="max-w-6xl">
+    <div>
       <h2 className="text-2xl font-bold text-blue-900 mb-6">Jobs</h2>
       <JobsClient initialJobs={jobs ?? []} employers={employers ?? []} userId={user.id} />
     </div>

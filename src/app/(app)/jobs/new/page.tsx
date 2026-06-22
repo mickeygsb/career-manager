@@ -15,7 +15,7 @@ const STATUS_OPTIONS: { value: JobStatus; label: string }[] = [
 export default function NewJobPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
-  const [employers, setEmployers] = useState<{ id: string; name: string; business_unit?: string }[]>([])
+  const [employers, setEmployers] = useState<{ id: string; name: string; subsidiary?: string }[]>([])
   const [form, setForm] = useState({
     employer_id: '',
     position: '',
@@ -39,7 +39,7 @@ export default function NewJobPage() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      supabase.from('employers').select('id, name, business_unit').eq('user_id', user.id).order('name')
+      supabase.from('employers').select('id, name, subsidiary').eq('user_id', user.id).order('name')
         .then(({ data }) => setEmployers(data ?? []))
     })
   }, [])
@@ -84,7 +84,7 @@ export default function NewJobPage() {
             <option value="">— Not linked —</option>
             {employers.map(emp => (
               <option key={emp.id} value={emp.id}>
-                {emp.business_unit ? `${emp.name} > ${emp.business_unit}` : emp.name}
+                {emp.subsidiary ? `${emp.name} > ${emp.subsidiary}` : emp.name}
               </option>
             ))}
           </select>

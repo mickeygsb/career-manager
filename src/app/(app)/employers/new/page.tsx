@@ -19,10 +19,6 @@ export default function NewEmployerPage() {
   const company = employerIdx === -1 ? form.name : form.name.slice(0, employerIdx)
   const subsidiary = employerIdx === -1 ? '' : form.name.slice(employerIdx + 3)
 
-  const industryIdx = form.industry.indexOf(' > ')
-  const industryName = industryIdx === -1 ? form.industry : form.industry.slice(0, industryIdx)
-  const segment = industryIdx === -1 ? '' : form.industry.slice(industryIdx + 3)
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -32,11 +28,10 @@ export default function NewEmployerPage() {
     const { error } = await supabase.from('employers').insert({
       user_id: user.id,
       name: company,
-      business_unit: subsidiary || null,
+      subsidiary: subsidiary || null,
       aka: form.aka || null,
       website: form.website || null,
-      industry: industryName || null,
-      industry_segment: segment || null,
+      industry_segment: form.industry || null,
       fudge_factor: form.fudge_factor !== '' ? parseInt(form.fudge_factor) : null,
       size: form.size || null,
       location: form.location || null,
@@ -75,11 +70,6 @@ export default function NewEmployerPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Field label="Industry Segment" value={form.industry} onChange={v => set('industry', v)} />
-            {(industryName || segment) && (
-              <p className="mt-1 text-xs text-gray-400">
-                {industryName}{segment && <> › <em>{segment}</em></>}
-              </p>
-            )}
           </div>
           <Field label="Location" value={form.location} onChange={v => set('location', v)} />
         </div>

@@ -5,12 +5,12 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 const nav = [
-  { href: '/employers', label: 'Employers', icon: '🏢' },
   { href: '/jobs', label: 'Jobs', icon: '💼' },
+  { href: '/employers', label: 'Employers', icon: '🏢' },
   { href: '/contacts', label: 'Contacts', icon: '👥' },
-  { href: '/resumes', label: 'Resumes', icon: '📄' },
+  { href: '/resumes', label: 'Resumes', icon: '📄', iconStyle: { filter: 'sepia(1) saturate(8) hue-rotate(320deg) brightness(0.9)' } },
+  { href: '/career-highlights', label: 'Career', icon: '🌟' },
   { href: '/achievements', label: 'Positions', icon: '⭐' },
-  { href: '/career-highlights', label: 'Highlights', icon: '🌟' },
   { href: '/keywords', label: 'Keywords', icon: '🏷️' },
 ]
 
@@ -43,7 +43,7 @@ export default function Sidebar() {
         </button>
       </div>
       <nav className="flex-1 px-2 py-4 space-y-1">
-        {nav.map(({ href, label, icon }) => {
+        {nav.map(({ href, label, icon, iconStyle }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
@@ -56,7 +56,7 @@ export default function Sidebar() {
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
-              <span>{icon}</span>
+              <span style={iconStyle}>{icon}</span>
               {!collapsed && label}
             </Link>
           )
