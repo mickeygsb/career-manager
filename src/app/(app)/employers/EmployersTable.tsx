@@ -14,10 +14,10 @@ const SIZE_OPTIONS: { value: EmployerSize | ''; label: string }[] = [
   { value: '10000+', label: '10000+' },
 ]
 
-type Row = Omit<Employer, 'user_id' | 'created_at' | 'updated_at'> & { open_jobs: number; applied_jobs: number }
+type Row = Omit<Employer, 'user_id' | 'created_at' | 'updated_at'> & { open_jobs: number; applied_jobs: number; active_jobs: number; latest_active_job_date: string | null }
 type TextField = 'name' | 'subsidiary' | 'industry' | 'industry_segment' | 'location' | 'website' | 'linkedin_company_codes' | 'career_site_url'
 
-function toRow(e: Employer, open_jobs = 0, applied_jobs = 0): Row {
+function toRow(e: Employer, open_jobs = 0, applied_jobs = 0, active_jobs = 0, latest_active_job_date: string | null = null): Row {
   return {
     id: e.id,
     name: [e.name, e.subsidiary].filter(Boolean).join(' > '),
@@ -40,6 +40,8 @@ function toRow(e: Employer, open_jobs = 0, applied_jobs = 0): Row {
     active: e.active ?? false,
     open_jobs,
     applied_jobs,
+    active_jobs,
+    latest_active_job_date,
   }
 }
 
@@ -49,7 +51,7 @@ function parseEmployer(name: string) {
   return { company: name.slice(0, idx), subsidiary: name.slice(idx + 3) }
 }
 
-type JobStub = { employer_id: string | null; status: string; status_detail: string | null }
+type JobStub = { employer_id: string | null; status: string; status_detail: string | null; active: boolean; date_opened?: string | null }
 
 export default function EmployersTable({ initialEmployers, initialJobs, userId }: { initialEmployers: Employer[]; initialJobs: JobStub[]; userId: string }) {
   const router = useRouter()
@@ -57,19 +59,29 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
   const [rows, setRows] = useState<Row[]>(() => {
     const openMap = new Map<string, number>()
     const appliedMap = new Map<string, number>()
+    const activeMap = new Map<string, number>()
+    const latestActiveDateMap = new Map<string, string>()
     for (const j of initialJobs) {
       if (!j.employer_id) continue
       if (j.status === 'open') openMap.set(j.employer_id, (openMap.get(j.employer_id) ?? 0) + 1)
       if ((j.status === 'open' || j.status === 'closed') && j.status_detail !== "Didn't Apply")
         appliedMap.set(j.employer_id, (appliedMap.get(j.employer_id) ?? 0) + 1)
+      if (j.active) {
+        activeMap.set(j.employer_id, (activeMap.get(j.employer_id) ?? 0) + 1)
+        if (j.date_opened) {
+          const cur = latestActiveDateMap.get(j.employer_id)
+          if (!cur || j.date_opened > cur) latestActiveDateMap.set(j.employer_id, j.date_opened)
+        }
+      }
     }
-    return initialEmployers.map(e => toRow(e, openMap.get(e.id) ?? 0, appliedMap.get(e.id) ?? 0))
+    return initialEmployers.map(e => toRow(e, openMap.get(e.id) ?? 0, appliedMap.get(e.id) ?? 0, activeMap.get(e.id) ?? 0, latestActiveDateMap.get(e.id) ?? null))
   })
   const [filter, setFilter] = useState('')
   const [filterTarget, setFilterTarget] = useState(false)
   const [filterGrowing, setFilterGrowing] = useState(false)
   const [filterActive, setFilterActive] = useState(false)
   const [filterApplied, setFilterApplied] = useState(false)
+  const [filterActiveJobs, setFilterActiveJobs] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterFudge, setFilterFudge] = useState<number | null>(null)
   const [sortOrder, setSortOrder] = useState<{ key: keyof Row; dir: 'asc' | 'desc' }[]>([])
@@ -78,27 +90,46 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    try {
-      setFilter(localStorage.getItem('employerFilter') ?? '')
-      setFilterTarget(localStorage.getItem('employerFilterTarget') === 'true')
-      setFilterGrowing(localStorage.getItem('employerFilterGrowing') === 'true')
-      setFilterActive(localStorage.getItem('employerFilterActive') === 'true')
-      const fv = localStorage.getItem('employerFilterFudge')
-      setFilterFudge(fv === null || fv === '' ? null : parseInt(fv))
-      const stored = localStorage.getItem('employerSortOrder')
-      if (stored) {
-        setSortOrder(JSON.parse(stored))
-      } else {
-        const key = localStorage.getItem('employerSortKey') as keyof Row | null
-        const dir = (localStorage.getItem('employerSortDir') as 'asc' | 'desc') || 'asc'
-        if (key) setSortOrder([{ key, dir }])
-      }
-      const cg = localStorage.getItem('employerCollapsedGroups')
-      if (cg) setCollapsedGroups(new Set(JSON.parse(cg)))
-      const go = localStorage.getItem('employerGroupOrder')
-      if (go) setGroupOrder(JSON.parse(go))
-    } catch {}
-    setHydrated(true)
+    const loadPreferences = async () => {
+      try {
+        setFilter(localStorage.getItem('employerFilter') ?? '')
+        setFilterTarget(localStorage.getItem('employerFilterTarget') === 'true')
+        setFilterGrowing(localStorage.getItem('employerFilterGrowing') === 'true')
+        setFilterActive(localStorage.getItem('employerFilterActive') === 'true')
+        setFilterApplied(localStorage.getItem('employerFilterApplied') === 'true')
+        setFilterActiveJobs(localStorage.getItem('employerFilterActiveJobs') === 'true')
+        setFilterOpen(localStorage.getItem('employerFilterOpen') === 'true')
+        const fv = localStorage.getItem('employerFilterFudge')
+        setFilterFudge(fv === null || fv === '' ? null : parseInt(fv))
+        const stored = localStorage.getItem('employerSortOrder')
+        if (stored) {
+          setSortOrder(JSON.parse(stored))
+        } else {
+          const key = localStorage.getItem('employerSortKey') as keyof Row | null
+          const dir = (localStorage.getItem('employerSortDir') as 'asc' | 'desc') || 'asc'
+          if (key) setSortOrder([{ key, dir }])
+        }
+        const cg = localStorage.getItem('employerCollapsedGroups')
+        if (cg) setCollapsedGroups(new Set(JSON.parse(cg)))
+        const go = localStorage.getItem('employerGroupOrder')
+        if (go) {
+          setGroupOrder(JSON.parse(go))
+        } else {
+          const supabase = createClient()
+          const { data: userPrefs } = await supabase
+            .from('user_preferences')
+            .select('employer_group_order_default')
+            .eq('user_id', userId)
+            .single()
+          if (userPrefs?.employer_group_order_default) {
+            setGroupOrder(userPrefs.employer_group_order_default)
+          }
+        }
+      } catch {}
+      setHydrated(true)
+    }
+    loadPreferences()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const [dragSrcGroup, setDragSrcGroup] = useState<string | null>(null)
   const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
@@ -250,11 +281,9 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
   // ── delete ────────────────────────────────────────────────────────────────
 
   async function deleteRow(id: string) {
-    setDeletingId(id)
+    setRows(rs => rs.filter(r => r.id !== id))
     const supabase = createClient()
     await supabase.from('employers').delete().eq('id', id).eq('user_id', userId)
-    setRows(rs => rs.filter(r => r.id !== id))
-    setDeletingId(null)
   }
 
   // ── render ────────────────────────────────────────────────────────────────
@@ -263,6 +292,9 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
   useEffect(() => { if (hydrated) localStorage.setItem('employerFilterTarget', String(filterTarget)) }, [filterTarget, hydrated])
   useEffect(() => { if (hydrated) localStorage.setItem('employerFilterGrowing', String(filterGrowing)) }, [filterGrowing, hydrated])
   useEffect(() => { if (hydrated) localStorage.setItem('employerFilterActive', String(filterActive)) }, [filterActive, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('employerFilterApplied', String(filterApplied)) }, [filterApplied, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('employerFilterActiveJobs', String(filterActiveJobs)) }, [filterActiveJobs, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('employerFilterOpen', String(filterOpen)) }, [filterOpen, hydrated])
   useEffect(() => {
     if (!hydrated) return
     if (filterFudge !== null) localStorage.setItem('employerFilterFudge', String(filterFudge))
@@ -270,7 +302,15 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
   }, [filterFudge, hydrated])
 
   useEffect(() => {
-    if (hydrated && groupOrder.length) localStorage.setItem('employerGroupOrder', JSON.stringify(groupOrder))
+    if (hydrated && groupOrder.length) {
+      localStorage.setItem('employerGroupOrder', JSON.stringify(groupOrder))
+      const supabase = createClient()
+      supabase
+        .from('user_preferences')
+        .upsert({ user_id: userId, employer_group_order_default: groupOrder }, { onConflict: 'user_id' })
+        .then(undefined, () => {})
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupOrder, hydrated])
 
   useEffect(() => {
@@ -345,6 +385,7 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
     if (filterGrowing && !r.growing_company) return false
     if (filterActive && !r.active) return false
     if (filterApplied && r.applied_jobs <= 0) return false
+    if (filterActiveJobs && r.active_jobs <= 0) return false
     if (filterOpen && r.open_jobs <= 0) return false
     if (filterFudge !== null && (r.fudge_factor == null || r.fudge_factor < filterFudge)) return false
     return true
@@ -437,6 +478,12 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
           Applied
         </button>
         <button
+          onClick={() => setFilterActiveJobs(v => !v)}
+          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${filterActiveJobs ? 'bg-teal-100 border-teal-300 text-teal-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+        >
+          Active
+        </button>
+        <button
           onClick={() => setFilterGrowing(v => !v)}
           title="Growing"
           className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors inline-flex items-center ${filterGrowing ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
@@ -457,9 +504,9 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
         </button>
-        {(filter || filterTarget || filterGrowing || filterActive || filterFudge !== null || filterApplied || filterOpen) && (
+        {(filter || filterTarget || filterGrowing || filterActive || filterFudge !== null || filterApplied || filterActiveJobs || filterOpen) && (
           <button
-            onClick={() => { setFilter(''); setFilterTarget(false); setFilterGrowing(false); setFilterActive(false); setFilterFudge(null); setFilterApplied(false); setFilterOpen(false) }}
+            onClick={() => { setFilter(''); setFilterTarget(false); setFilterGrowing(false); setFilterActive(false); setFilterFudge(null); setFilterApplied(false); setFilterActiveJobs(false); setFilterOpen(false) }}
             className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
           >
             Clear filters
@@ -473,6 +520,8 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
               <th className="text-left px-4 py-2 font-medium text-gray-500 w-[26%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('name', e.ctrlKey)}>Employer{sortIndicator('name')}</th>
               <th className="text-center px-4 py-2 font-medium text-gray-500 w-[6%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('open_jobs', e.ctrlKey)}>Open{sortIndicator('open_jobs')}</th>
               <th className="text-center px-4 py-2 font-medium text-gray-500 w-[6%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('applied_jobs', e.ctrlKey)}>Applied{sortIndicator('applied_jobs')}</th>
+              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[6%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('active_jobs', e.ctrlKey)}>Active{sortIndicator('active_jobs')}</th>
+              <th className="text-center px-4 py-2 font-medium text-gray-500 w-[9%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('latest_active_job_date', e.ctrlKey)}>Latest{sortIndicator('latest_active_job_date')}</th>
               <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('career_site_url', e.ctrlKey)}>Link{sortIndicator('career_site_url')}</th>
               <th className="text-center px-4 py-2 font-medium text-gray-500 w-[8%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('fudge_factor', e.ctrlKey)}>Fudge{sortIndicator('fudge_factor')}</th>
               <th className="text-center px-4 py-2 font-medium text-gray-500 w-[7%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('growing_company', e.ctrlKey)} title="Growing"><span className="inline-flex items-center gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>{sortIndicator('growing_company')}</span></th>
@@ -483,7 +532,7 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
           </thead>
           <tbody className="divide-y divide-gray-100">
             {sortedRows.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400 text-sm">No employers match "{filter}"</td></tr>
+              <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-400 text-sm">No employers match "{filter}"</td></tr>
             )}
             {orderedGroups.map(group => {
               const collapsed = collapsedGroups.has(group.label)
@@ -499,7 +548,7 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
                 onDragEnd={() => { setDragSrcGroup(null); setDragOverGroup(null) }}
                 className={`select-none ${isDragOver ? 'border-t-2 border-blue-400' : ''} ${isDragging ? 'opacity-40' : ''}`}
               >
-                <td colSpan={9} className="px-4 pt-2 pb-2 bg-blue-900 border-b border-blue-950">
+                <td colSpan={11} className="px-4 pt-2 pb-2 bg-blue-900 border-b border-blue-950">
                   <span className="flex items-center gap-1.5 text-xs font-semibold text-white uppercase tracking-wide">
                     <span className="text-blue-300 cursor-grab active:cursor-grabbing">⠿</span>
                     <span className="cursor-pointer" onClick={() => toggleGroup(group.label)}>{collapsed ? '▶' : '▼'}</span>
@@ -523,6 +572,14 @@ export default function EmployersTable({ initialEmployers, initialJobs, userId }
                 {/* Open / Closed job counts */}
                 <td className="px-4 py-1.5 text-center text-sm text-black">{row.open_jobs || <span className="text-gray-300">0</span>}</td>
                 <td className="px-4 py-1.5 text-center text-sm text-black">{row.applied_jobs || <span className="text-gray-300">0</span>}</td>
+                <td className="px-4 py-1.5 text-center text-sm text-black">{row.active_jobs || <span className="text-gray-300">0</span>}</td>
+
+                {/* Latest active job date */}
+                <td className="px-4 py-1 text-center text-xs text-black tabular-nums">
+                  {row.latest_active_job_date
+                    ? (() => { const [y, m, d] = row.latest_active_job_date.split('-'); return `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}` })()
+                    : <span className="text-gray-300">—</span>}
+                </td>
 
                 {/* Career Site URL */}
                 <td className="px-4 py-1 text-center">

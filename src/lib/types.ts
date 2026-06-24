@@ -29,6 +29,7 @@ export interface Job {
   role?: string
   domain?: string
   specialty?: string
+  fit?: number
   active: boolean
   favorite: boolean
   created_at: string

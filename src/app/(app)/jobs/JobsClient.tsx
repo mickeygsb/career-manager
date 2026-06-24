@@ -43,6 +43,7 @@ type Draft = {
   specialty: string
   status: JobStatus
   status_detail: string
+  fit: number
   location: string
   date_opened: string
   date_applied: string
@@ -67,6 +68,7 @@ const defaultAddForm = (): AddForm => ({
   specialty: '',
   status: 'draft',
   status_detail: '',
+  fit: 2,
   location: '',
   date_opened: new Date().toISOString().slice(0, 10),
   date_applied: '',
@@ -91,6 +93,7 @@ function toDraft(job: Job): Draft {
     specialty: job.specialty ?? '',
     status: job.status,
     status_detail: job.status_detail ?? '',
+    fit: job.fit ?? 0,
     location: job.location ?? '',
     date_opened: job.date_opened ?? '',
     date_applied: job.date_applied ?? '',
@@ -121,6 +124,10 @@ export default function JobsClient({
   const [filterStatus, setFilterStatus] = useState('')
   const [filterStatusDetail, setFilterStatusDetail] = useState('')
   const [filterSegment, setFilterSegment] = useState('')
+  const [filterRole, setFilterRole] = useState('')
+  const [filterDomain, setFilterDomain] = useState('')
+  const [filterSpecialty, setFilterSpecialty] = useState('')
+  const [filterFit, setFilterFit] = useState('')
   const [filterActive, setFilterActive] = useState(false)
   const [filterFavorite, setFilterFavorite] = useState(false)
   const [filterNextStep, setFilterNextStep] = useState(false)
@@ -169,6 +176,10 @@ export default function JobsClient({
       setFilterStatus(localStorage.getItem('jobFilterStatus') ?? '')
       setFilterStatusDetail(localStorage.getItem('jobFilterStatusDetail') ?? '')
       setFilterSegment(localStorage.getItem('jobFilterSegment') ?? '')
+      setFilterRole(localStorage.getItem('jobFilterRole') ?? '')
+      setFilterDomain(localStorage.getItem('jobFilterDomain') ?? '')
+      setFilterSpecialty(localStorage.getItem('jobFilterSpecialty') ?? '')
+      setFilterFit(localStorage.getItem('jobFilterFit') ?? '')
       setFilterActive(localStorage.getItem('jobFilterActive') === 'true')
       setFilterFavorite(localStorage.getItem('jobFilterFavorite') === 'true')
       setFilterNextStep(localStorage.getItem('jobFilterNextStep') === 'true')
@@ -201,7 +212,7 @@ export default function JobsClient({
 
   function startEdit(jobId: string, field: string) { setEditing({ jobId, field }) }
   function cancelEdit() { setEditing(null) }
-  function setAF(k: keyof AddForm, v: string | boolean) { setAddForm(f => ({ ...f, [k]: v })) }
+  function setAF(k: keyof AddForm, v: string | boolean | number) { setAddForm(f => ({ ...f, [k]: v })) }
 
   async function saveAdd() {
     if (!addForm.position) return
@@ -217,6 +228,7 @@ export default function JobsClient({
       specialty: addForm.specialty || null,
       status: addForm.status,
       status_detail: addForm.status_detail || null,
+      fit: addForm.fit ?? null,
       location: addForm.location || null,
       date_opened: addForm.date_opened || null,
       date_applied: addForm.date_applied || null,
@@ -503,6 +515,7 @@ export default function JobsClient({
       specialty: dialog.specialty || null,
       status: dialog.status,
       status_detail: dialog.status_detail || null,
+      fit: dialog.fit ?? null,
       location: dialog.location || null,
       date_opened: dialog.date_opened || null,
       date_applied: dialog.date_applied || null,
@@ -556,9 +569,9 @@ export default function JobsClient({
 
   async function deleteJob(id: string) {
     closeDialog()
+    setJobs(js => js.filter(j => j.id !== id))
     const supabase = createClient()
     await supabase.from('jobs').delete().eq('id', id).eq('user_id', userId)
-    setJobs(js => js.filter(j => j.id !== id))
   }
 
   useEffect(() => { if (hydrated) localStorage.setItem('jobFilter', filter) }, [filter, hydrated])
@@ -566,6 +579,10 @@ export default function JobsClient({
   useEffect(() => { if (hydrated) localStorage.setItem('jobFilterStatus', filterStatus) }, [filterStatus, hydrated])
   useEffect(() => { if (hydrated) localStorage.setItem('jobFilterStatusDetail', filterStatusDetail) }, [filterStatusDetail, hydrated])
   useEffect(() => { if (hydrated) localStorage.setItem('jobFilterSegment', filterSegment) }, [filterSegment, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('jobFilterRole', filterRole) }, [filterRole, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('jobFilterDomain', filterDomain) }, [filterDomain, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('jobFilterSpecialty', filterSpecialty) }, [filterSpecialty, hydrated])
+  useEffect(() => { if (hydrated) localStorage.setItem('jobFilterFit', filterFit) }, [filterFit, hydrated])
   useEffect(() => { if (hydrated) localStorage.setItem('jobFilterActive', String(filterActive)) }, [filterActive, hydrated])
   useEffect(() => { if (hydrated) localStorage.setItem('jobFilterFavorite', String(filterFavorite)) }, [filterFavorite, hydrated])
   useEffect(() => { if (hydrated) localStorage.setItem('jobFilterNextStep', String(filterNextStep)) }, [filterNextStep, hydrated])
@@ -608,6 +625,10 @@ export default function JobsClient({
       case 'date_applied': return job.date_applied ?? ''
       case 'next_step': return job.next_step ?? ''
       case 'career_site_id': return job.career_site_id ?? ''
+      case 'role': return job.role ?? ''
+      case 'domain': return job.domain ?? ''
+      case 'fit': return String(job.fit ?? 0).padStart(2, '0')
+      case 'specialty': return job.specialty ?? ''
       case 'industry_segment': return job.employers?.industry_segment ?? ''
       default: return ''
     }
@@ -616,6 +637,10 @@ export default function JobsClient({
   const segments = [...new Set(
     jobs.map(j => j.employers?.industry_segment ?? '').filter(Boolean)
   )].sort()
+
+  const roles = [...new Set(jobs.map(j => j.role ?? '').filter(Boolean))].sort()
+  const domains = [...new Set(jobs.map(j => j.domain ?? '').filter(Boolean))].sort()
+  const specialties = [...new Set(jobs.map(j => j.specialty ?? '').filter(Boolean))].sort()
 
   const q = filter.trim().toLowerCase()
   const filteredJobs = jobs.filter(j => {
@@ -630,6 +655,10 @@ export default function JobsClient({
     if (filterStatus && j.status !== filterStatus) return false
     if (filterStatusDetail && (j.status_detail ?? '') !== filterStatusDetail) return false
     if (filterSegment && (j.employers?.industry_segment ?? '') !== filterSegment) return false
+    if (filterRole && (j.role ?? '') !== filterRole) return false
+    if (filterDomain && (j.domain ?? '') !== filterDomain) return false
+    if (filterSpecialty && (j.specialty ?? '') !== filterSpecialty) return false
+    if (filterFit !== '' && String(j.fit ?? 0) !== filterFit) return false
     if (filterActive && !j.active) return false
     if (filterFavorite && !j.favorite) return false
     if (filterNextStep && !j.next_step) return false
@@ -690,14 +719,6 @@ export default function JobsClient({
                 <option key={emp.id} value={emp.id}>{employerLabel(emp)}</option>
               ))}
             </select>
-            <select
-              value={filterSegment}
-              onChange={e => setFilterSegment(e.target.value)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${filterSegment ? 'border-blue-300 text-blue-800 bg-blue-50' : 'border-gray-200 text-gray-600'}`}
-            >
-              <option value="">All Segments</option>
-              {segments.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
           </div>
           <button
             onClick={() => { setAddForm(defaultAddForm()); setShowAdd(true) }}
@@ -705,6 +726,48 @@ export default function JobsClient({
           >
             + Add Job
           </button>
+        </div>
+        <div className="flex flex-wrap gap-2 items-center">
+          <select
+            value={filterSegment}
+            onChange={e => setFilterSegment(e.target.value)}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${filterSegment ? 'border-blue-300 text-blue-800 bg-blue-50' : 'border-gray-200 text-gray-600'}`}
+          >
+            <option value="">All Segments</option>
+            {segments.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            value={filterRole}
+            onChange={e => setFilterRole(e.target.value)}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${filterRole ? 'border-blue-300 text-blue-800 bg-blue-50' : 'border-gray-200 text-gray-600'}`}
+          >
+            <option value="">All Roles</option>
+            {roles.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <select
+            value={filterDomain}
+            onChange={e => setFilterDomain(e.target.value)}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${filterDomain ? 'border-blue-300 text-blue-800 bg-blue-50' : 'border-gray-200 text-gray-600'}`}
+          >
+            <option value="">All Domains</option>
+            {domains.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <select
+            value={filterSpecialty}
+            onChange={e => setFilterSpecialty(e.target.value)}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${filterSpecialty ? 'border-blue-300 text-blue-800 bg-blue-50' : 'border-gray-200 text-gray-600'}`}
+          >
+            <option value="">All Specialties</option>
+            {specialties.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            value={filterFit}
+            onChange={e => setFilterFit(e.target.value)}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${filterFit !== '' ? 'border-blue-300 text-blue-800 bg-blue-50' : 'border-gray-200 text-gray-600'}`}
+          >
+            <option value="">All Fits</option>
+            {[0, 1, 2, 3].map(n => <option key={n} value={String(n)}>{n}</option>)}
+          </select>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <select
@@ -746,9 +809,9 @@ export default function JobsClient({
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
           </button>
-          {(filter || filterEmployer || filterStatus || filterStatusDetail || filterSegment || filterActive || filterFavorite || filterNextStep) && (
+          {(filter || filterEmployer || filterStatus || filterStatusDetail || filterSegment || filterRole || filterDomain || filterSpecialty || filterFit !== '' || filterActive || filterFavorite || filterNextStep) && (
             <button
-              onClick={() => { setFilter(''); setFilterEmployer(''); setFilterStatus(''); setFilterStatusDetail(''); setFilterSegment(''); setFilterActive(false); setFilterFavorite(false); setFilterNextStep(false) }}
+              onClick={() => { setFilter(''); setFilterEmployer(''); setFilterStatus(''); setFilterStatusDetail(''); setFilterSegment(''); setFilterRole(''); setFilterDomain(''); setFilterSpecialty(''); setFilterFit(''); setFilterActive(false); setFilterFavorite(false); setFilterNextStep(false) }}
               className="px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
             >
               Clear filters
@@ -767,9 +830,11 @@ export default function JobsClient({
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50">
               <th className="text-left px-4 py-2 font-medium text-gray-500 w-[150px] min-w-[150px] sticky left-0 z-10 bg-gray-50 cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('employer', e.ctrlKey)}>Employer{sortIndicator('employer')}</th>
-              <th className="text-left px-4 py-2 font-medium text-gray-500 w-[150px] min-w-[150px] sticky left-[150px] z-10 bg-gray-50 cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('industry_segment', e.ctrlKey)}>Segment{sortIndicator('industry_segment')}</th>
-              <th className="text-left px-4 py-2 font-medium text-gray-500 min-w-[240px] sticky left-[300px] z-10 bg-gray-50 border-r border-gray-200 cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('position', e.ctrlKey)}>Position{sortIndicator('position')}</th>
+              <th className="text-left px-4 py-2 font-medium text-gray-500 min-w-[240px] sticky left-[150px] z-10 bg-gray-50 border-r border-gray-200 cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('position', e.ctrlKey)}>Position{sortIndicator('position')}</th>
               <th className="text-left px-4 py-2 font-medium text-gray-500 min-w-[120px] cursor-pointer select-none hover:text-gray-800 whitespace-nowrap" onClick={(e) => handleSort('career_site_id', e.ctrlKey)}>Career Site ID{sortIndicator('career_site_id')}</th>
+              <th className="text-left px-4 py-2 font-medium text-gray-500 min-w-[110px] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('role', e.ctrlKey)}>Role{sortIndicator('role')}</th>
+              <th className="text-left px-4 py-2 font-medium text-gray-500 min-w-[110px] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('domain', e.ctrlKey)}>Domain{sortIndicator('domain')}</th>
+              <th className="text-left px-4 py-2 font-medium text-gray-500 w-[50px] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('fit', e.ctrlKey)}>Fit{sortIndicator('fit')}</th>
               <th className="text-left px-4 py-2 font-medium text-gray-500 w-[11%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('status', e.ctrlKey)}>Status{sortIndicator('status')}</th>
               <th className="text-left px-4 py-2 font-medium text-gray-500 w-[14%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('status_detail', e.ctrlKey)}>Status Detail{sortIndicator('status_detail')}</th>
               <th className="text-left px-4 py-2 font-medium text-gray-500 w-[10%] cursor-pointer select-none hover:text-gray-800" onClick={(e) => handleSort('date_opened', e.ctrlKey)}>Opened{sortIndicator('date_opened')}</th>
@@ -794,15 +859,7 @@ export default function JobsClient({
                     ? <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={e => { e.stopPropagation(); setFilterEmployer(job.employer_id!) }}>{jobEmployerName(job)}</span>
                     : <span className="text-gray-300">—</span>}
                 </td>
-                <td className={`px-4 py-1.5 text-black text-sm w-[150px] min-w-[150px] sticky left-[150px] z-[1] bg-white group-hover:bg-gray-50 ${dim}`}>
-                  {(() => {
-                    const seg = job.employers?.industry_segment ?? ''
-                    return seg
-                      ? <span className="cursor-pointer hover:text-blue-600 hover:underline" onClick={e => { e.stopPropagation(); setFilterSegment(seg) }}>{seg}</span>
-                      : <span className="text-gray-300">—</span>
-                  })()}
-                </td>
-                <td className={`px-4 py-1.5 text-black sticky left-[300px] z-[1] bg-white group-hover:bg-gray-50 border-r border-gray-200 ${dim}`} onClick={e => { e.stopPropagation(); startEdit(job.id, 'position') }}>
+                <td className={`px-4 py-1.5 text-black sticky left-[150px] z-[1] bg-white group-hover:bg-gray-50 border-r border-gray-200 ${dim}`} onClick={e => { e.stopPropagation(); startEdit(job.id, 'position') }}>
                   {editing?.jobId === job.id && editing.field === 'position'
                     ? <InlineEdit value={job.position} onCommit={v => commitEdit(job.id, 'position', v)} onCancel={cancelEdit} />
                     : <span className="cursor-text">{job.position}</span>}
@@ -815,6 +872,34 @@ export default function JobsClient({
                         ? <a href={job.career_site_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="hover:text-blue-600 hover:underline">{job.career_site_id}</a>
                         : <span className="cursor-text">{job.career_site_id}</span>
                       : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={`px-4 py-1.5 text-black text-sm ${dim}`} onClick={e => { e.stopPropagation(); startEdit(job.id, 'role') }}>
+                  {editing?.jobId === job.id && editing.field === 'role'
+                    ? <InlineEdit value={job.role ?? ''} onCommit={v => commitEdit(job.id, 'role', v)} onCancel={cancelEdit} />
+                    : job.role ? <span className="cursor-text">{job.role}</span> : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={`px-4 py-1.5 text-black text-sm ${dim}`} onClick={e => { e.stopPropagation(); startEdit(job.id, 'domain') }}>
+                  {editing?.jobId === job.id && editing.field === 'domain'
+                    ? <InlineEdit value={job.domain ?? ''} onCommit={v => commitEdit(job.id, 'domain', v)} onCancel={cancelEdit} />
+                    : job.domain ? <span className="cursor-text">{job.domain}</span> : <span className="text-gray-300">—</span>}
+                </td>
+                <td className={`px-4 py-1.5 text-black text-sm tabular-nums ${dim}`} onClick={e => { e.stopPropagation(); startEdit(job.id, 'fit') }}>
+                  {editing?.jobId === job.id && editing.field === 'fit'
+                    ? <input
+                        type="number" min={0} max={3} autoFocus
+                        defaultValue={job.fit ?? 2}
+                        className="w-14 px-1 py-0.5 border border-blue-400 rounded text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={e => {
+                          const v = Math.min(3, Math.max(0, parseInt(e.target.value) || 0))
+                          e.target.value = String(v)
+                        }}
+                        onBlur={e => commitEdit(job.id, 'fit', String(Math.min(3, Math.max(0, parseInt(e.target.value) || 0))))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                          if (e.key === 'Escape') cancelEdit()
+                        }}
+                      />
+                    : <span className="cursor-text">{job.fit ?? <span className="text-gray-300">—</span>}</span>}
                 </td>
                 <td className={`px-4 py-1.5 ${dim}`} onClick={e => { e.stopPropagation(); startEdit(job.id, 'status') }}>
                   {editing?.jobId === job.id && editing.field === 'status'
@@ -941,28 +1026,39 @@ export default function JobsClient({
                   {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
-              <div className="col-span-2 flex items-end gap-4">
+              <div className="col-span-2 flex items-end gap-2">
                 {JOB_STATUS_DETAIL_OPTIONS[dialog.status] && (
-                  <div className="flex-1">
+                  <div className="w-36">
                     <label className="block text-xs font-medium text-gray-500 mb-1">Status Detail</label>
                     <select value={dialog.status_detail} onChange={e => setDialog(d => d ? { ...d, status_detail: e.target.value, active: e.target.value === "Didn't Apply" ? false : d.active } : d)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      className="w-full px-2 py-2 border border-gray-200 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                       <option value="">— Select —</option>
                       {JOB_STATUS_DETAIL_OPTIONS[dialog.status]!.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                 )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Fit</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={3}
+                    value={dialog.fit}
+                    onChange={e => setDialog(d => d ? { ...d, fit: Math.min(3, Math.max(0, parseInt(e.target.value) || 0)) } : d)}
+                    className="w-16 px-2 py-2 border border-gray-200 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <div className="flex gap-3 pb-1.5 ml-auto">
-                <button type="button" onClick={() => setDialog(d => d ? { ...d, favorite: !d.favorite } : d)}
-                  title={dialog.favorite ? 'Remove favorite' : 'Add to favorites'}
-                  className={`text-xl leading-none transition-colors ${dialog.favorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'}`}>
-                  ★
-                </button>
-                <button type="button" onClick={() => setDialog(d => d ? { ...d, active: !d.active } : d)}
-                  title={dialog.active ? 'Active' : 'Inactive'}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${dialog.active ? 'text-green-500' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
-                </button>
-              </div>
+                  <button type="button" onClick={() => setDialog(d => d ? { ...d, favorite: !d.favorite } : d)}
+                    title={dialog.favorite ? 'Remove favorite' : 'Add to favorites'}
+                    className={`text-xl leading-none transition-colors ${dialog.favorite ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'}`}>
+                    ★
+                  </button>
+                  <button type="button" onClick={() => setDialog(d => d ? { ...d, active: !d.active } : d)}
+                    title={dialog.active ? 'Active' : 'Inactive'}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`w-5 h-5 ${dialog.active ? 'text-green-500' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+                  </button>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -1263,24 +1359,35 @@ export default function JobsClient({
               <DField label="Specialty" value={addForm.specialty} onChange={v => setAF('specialty', v)} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="flex gap-3 items-end">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
                 <select value={addForm.status} onChange={e => { setAF('status', e.target.value); setAF('status_detail', '') }}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                   {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               {JOB_STATUS_DETAIL_OPTIONS[addForm.status] && (
-                <div>
+                <div className="w-36">
                   <label className="block text-xs font-medium text-gray-500 mb-1">Status Detail</label>
                   <select value={addForm.status_detail} onChange={e => setAddForm(f => ({ ...f, status_detail: e.target.value, active: e.target.value === "Didn't Apply" ? false : f.active }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    className="w-full px-2 py-2 border border-gray-200 rounded-lg text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">— Select —</option>
                     {JOB_STATUS_DETAIL_OPTIONS[addForm.status]!.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
               )}
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Fit</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={3}
+                  value={addForm.fit}
+                  onChange={e => setAF('fit', Math.min(3, Math.max(0, parseInt(e.target.value) || 0)))}
+                  className="w-16 px-2 py-2 border border-gray-200 rounded-lg text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

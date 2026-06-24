@@ -17,7 +17,7 @@ export default async function EmployersPage() {
 
   const { data: jobs } = await supabase
     .from('jobs')
-    .select('employer_id, status, status_detail')
+    .select('employer_id, status, status_detail, active, date_opened')
     .eq('user_id', user.id)
 
   return (
